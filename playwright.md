@@ -1,4 +1,34 @@
-[TOC]
+- [一、启动浏览器](#一启动浏览器)
+  -  [1. 同步方式（sync_api）](#1-同步方式sync_api)
+  - [2. 异步方式（sync_api）](#2-异步方式sync_api)
+- [二、playwright 基础操作](#二playwright-基础操作)
+  - [1. 窗口最大化](#1-窗口最大化)
+  - [2. 设置窗口的指定大小](#2-设置窗口的指定大小)
+  - [3. 启动本地浏览器](#3-启动本地浏览器)
+  - [4. 在打开的浏览器上继续操作](#4-在打开的浏览器上继续操作)
+- [三、元素定位](#三元素定位)
+  - [1. CSS 或 XPath 选择器](#1-css-或-xpath-选择器)
+  - [2. 文本选择器](#2-文本选择器)
+  - [3. 组合定位](#3-组合定位)
+  - [4. playwright内置定位器](#4-playwright内置定位器)
+    - [4.1 page.get_by_text()](#41-pageget_by_text)
+    - [4.2 page.get_by_role()](#42-pageget_by_role)
+    - [4.3 page.get_by_alt_text()](#43-pageget_by_alt_text)
+  - [5. ElementHandle元素句柄](#5-elementhandle元素句柄)
+- [四、元素操作](#四元素操作)
+  - [1. 输入文字](#1-输入文字)
+    - [1.1 fill()](#11-fill)
+    - [1.2 type()](#12-type)
+  - [2. 点击](#2-点击)
+  - [3. 悬停](#3-悬停)
+  - [4. iframe](#4-iframe)
+    - [4.1 iframe定位](#41-iframe定位)
+    - [4.2 案例](#42-案例)
+    - [4.3 获取页面上所有的面上所有的iframe](#43-获取页面上所有的面上所有的iframe)
+  - [5. 截图](#5-截图)
+    - [5.1 screenshot 截图](#51-screenshot-截图)
+    - [5.2 截长图](#52-截长图)
+    - [5.3 截取单个元素](#53-截取单个元素)
 
 ## 一、启动浏览器
 
@@ -157,7 +187,7 @@ with sync_playwright() as p:
 
 css 选择器， xpath 语法定位， text 文本选择器， 组合定位
 
-### 1. CSS 或或 XPath 选择器
+### 1. CSS 或 XPath 选择器
 
 的前缀 `css=` 和 `xpath=` 是对定位方式的声明，不写也是可以的（**不建议！！**），playwright能够自动判断你写的是css还是xpath语法。
 
@@ -295,7 +325,7 @@ page.get_by_alt_text("playwright logo").click()
 
 
 
-### 5.  ElementHandle元素句柄
+### 5. ElementHandle元素句柄
 
 ElementHandle 表示页内 DOM 元素。ElementHandles 可以使用`page.query_selector()`方法创建。
 
@@ -519,7 +549,7 @@ with sync_playwright() as p:
     browser.close()
 ```
 
-#### 5.2  截长图
+#### 5.2 截长图
 
 设置 `full_page=True` 参数 screenshot 是一个完整的可滚动页面的屏幕截图，就好像你有一个非常高的屏幕并且页面可以完全容纳它。
 
@@ -527,7 +557,7 @@ with sync_playwright() as p:
 page.screenshot(path="screenshot.png", full_page=True)
 ```
 
-#### 5.3  截取单个元素
+#### 5.3 截取单个元素
 
 ```python
 from playwright.sync_api import sync_playwright
