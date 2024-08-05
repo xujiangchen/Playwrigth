@@ -29,6 +29,15 @@
     - [5.1 screenshot 截图](#51-screenshot-截图)
     - [5.2 截长图](#52-截长图)
     - [5.3 截取单个元素](#53-截取单个元素)
+  - [6. 文件上传](#6-文件上传)
+    - [6.1 input 文件输入框](#61-input 文件输入框)
+    - [6.2 非input 文件输入框](#62-非input 文件输入框)
+    - [6.3 事件监听filechooser](#63-事件监听filechooser)
+  - [7. 文件下载](#7-文件下载)
+    - [7.1 expect_download()](#71-expect_download)
+    - [7.2 download相关操作](#72-download相关操作)
+
+
 
 ## 一、启动浏览器
 
@@ -581,3 +590,102 @@ with sync_playwright() as p:
     browser.close()
 ```
 
+### 6. 文件上传
+
+#### 6.1 input 文件输入框
+
+您可以使用locator.set_input_files()方法选择要上传的输入文件。它期望第一个参数指向`<input>` 的输入元素"file"。数组中可以传递多个文件。
+
+```python
+# Select one file
+page.get_by_label("Upload file").set_input_files('myfile.pdf')
+
+# Select multiple files
+page.get_by_label("Upload files").set_input_files(['file1.txt', 'file2.txt'])
+
+# Remove all the selected files
+page.get_by_label("Upload file").set_input_files([])
+
+# Upload buffer from memory
+page.get_by_label("Upload file").set_input_files(
+        files=[
+            {"name": "test.txt", "mimeType": "text/plain", "buffer": b"this is a test"}
+        ],
+    )
+```
+
+#### 6.2 非input 文件输入框
+
+没有输入元素（它是动态创建的， 非input 类型的文件上传框）
+
+```python
+# 当点击Upload file按钮的时候，获取expect_file_chooser事件
+with page.expect_file_chooser() as fc_info:
+    page.get_by_label("Upload file").click()
+
+file_chooser = fc_info.value
+file_chooser.set_files("myfile.pdf")
+
+# 返回与此文件选择器关联的输入元素。
+file_chooser.element 
+# 返回此文件选择器是否接受多个文件。
+file_chooser.is_multiple() 
+# 返回此文件选择器所属的页面
+file_chooser.page 
+```
+
+#### 6.3 事件监听filechooser
+
+ 捕获 `page.on("filechooser")` 事件
+
+```python
+page.on("filechooser", lambda file_chooser: file_chooser.set_files(r"D:\tou.png"))
+# 点击选择文件按钮，会触发 filechooser 事件
+page.get_by_label("选择文件").click()
+```
+
+
+
+### 7. 文件下载
+
+#### 7.1 expect_download()
+
+当浏览器上下文关闭时，所有属于浏览器上下文的下载文件都会被删除。
+
+```python
+with page.expect_download() as download_info:
+    page.get_by_text("Download file").click()
+download = download_info.value
+# wait for download to complete
+path = download.path()
+```
+
+
+
+#### 7.2 download相关操作
+
+```python
+# 1.取消下载。如果下载已经完成或取消，则不会失败。成功取消后，download.failure()将解析为'canceled'.
+download.cancel()
+
+# 2.删除下载的文件, 将等待下载完成。
+download.delete()
+
+# 3.返回下载错误（如果有）将等待下载完成。
+download.failure()
+
+# 4.获取下载所属的页面。
+download.page
+
+# 5.下载路径 如果下载成功，则返回下载文件的路径。 下载的文件名是随机 GUID，使用download.suggested_filename获取建议的文件名。
+download.path()
+
+# 6. 将下载复制到用户指定的路径。在下载仍在进行时调用此方法是安全的。将等待下载完成。
+download.save_as(path)
+
+# 7.返回此下载的建议文件名。
+download.suggested_filename
+
+# 8.返回下载的 url。
+download.url
+```
