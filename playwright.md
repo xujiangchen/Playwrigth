@@ -36,6 +36,10 @@
   - [7. 文件下载](#7-文件下载)
     - [7.1 expect_download()](#71-expect_download)
     - [7.2 download相关操作](#72-download相关操作)
+  - [8. 监听dialog处理alert](#8-监听dialog处理alert)
+    - [8.1 dialog事件监听](#81-dialog事件监听)
+    - [8.2 dialog属性和方法](#82-dialog属性和方法)
+    - [8.3 案例](#83-案例)
 
 
 
@@ -689,3 +693,165 @@ download.suggested_filename
 # 8.返回下载的 url。
 download.url
 ```
+
+
+
+### 8. 监听dialog处理alert
+
+```html
+<!--index.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+    <input id = "alert" value = "alert" type = "button" onclick = "alert('你好');"/>
+    <input id = "confirm" value = "confirm" type = "button" onclick = "confirm('世界');"/>
+    <input id = "prompt" value = "prompt" type = "button" onclick = "var name = prompt('please write','hello world');"/>
+</body>
+</html>
+```
+
+playwright 框架可以监听dialog事件，不管你alert 什么时候弹出来，弹出何种类型，监听到事件就自动处理了
+
+```python
+# 所以当你在playwright 框架中，如果你点击页面上的alert弹窗框一瞬间就消失了
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=2000)
+    # 创建标签页
+    page = browser.new_page(no_viewport=True)
+    # 打开指定网站
+    page.goto("E:\\Python Project\\uiautotest_playwright\\index.html")
+
+    page.click("#alert") # 点击后playwright会自动处理掉这个alert弹出框
+```
+
+#### 8.1 dialog事件监听
+
+```python
+page.on("dialog", lambda dialog: dialog.accept())
+```
+
+**手动处理**
+
+```python
+from playwright.sync_api import sync_playwright
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=2000)
+    # 创建标签页
+    page = browser.new_page(no_viewport=True)
+    # 打开指定网站
+    # page.goto("https://www.baidu.com")
+
+    page.goto("E:\\Python Project\\uiautotest_playwright\\index.html")
+
+    page.click("#alert")
+
+    def handle_dialog(dialog):
+        """监听后处理"""
+        print(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", handle_dialog)
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+```
+
+#### 8.2 dialog属性和方法
+
+**accept()。**
+
+```python
+# 当对话框被接受时返回
+dialog.accept()
+dialog.accept(**kwargs)
+
+# 参数 prompt_text(可选), 要在提示中输入的文本。如果对话框 type 没有提示，则不会产生任何影响
+```
+
+**default_value**
+
+```python
+# 如果对话框是提示的，则返回默认提示值。否则，返回空字符串, 是给prompt 属性的input 使用的，返回输入框中的值
+dialog.default_value
+```
+
+**dismiss() **
+
+```python
+# 关闭对话框
+dialog.dismiss()
+```
+
+**message**
+
+```python
+# 获取对话框中显示的消息，默认显示在alert中的数据
+dialog.message
+```
+
+**type**
+
+```python
+# 返回对话框的类型，可以是 alert , beforeunload , confirm 或 prompt 其中一个。
+dialog.type
+```
+
+#### 8.3 案例
+
+```python
+from playwright.sync_api import sync_playwright, Dialog
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=2000)
+    # 创建标签页
+    page = browser.new_page(no_viewport=True)
+    # 打开指定网站
+    # page.goto("https://www.baidu.com")
+
+    page.goto("E:\\Python Project\\uiautotest_playwright\\index.html")
+
+    def handle_dialog(dialog: Dialog, condition=True, text=None):
+        """监听后处理"""
+        print(f'dialog message: {dialog.message}')
+        dialog_type = dialog.type
+        if dialog_type == 'alert':
+            dialog.accept()
+        if dialog_type == 'confirm':
+            if condition:
+                dialog.accept()
+            else:
+                dialog.dismiss()
+        if dialog_type == 'prompt':
+            if text is None:
+                dialog.dismiss()
+            else:
+                print(f'dialog message: {dialog.default_value}')
+                dialog.accept(prompt_text=text)
+
+    page.on("dialog", lambda dialog: handle_dialog(dialog, condition=True, text=str(2)))
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+```
+
