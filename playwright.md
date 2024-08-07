@@ -30,8 +30,8 @@
     - [5.2 截长图](#52-截长图)
     - [5.3 截取单个元素](#53-截取单个元素)
   - [6. 文件上传](#6-文件上传)
-    - [6.1 input 文件输入框](#61-input 文件输入框)
-    - [6.2 非input 文件输入框](#62-非input 文件输入框)
+    - [6.1 input 文件输入框](#61-input-文件输入框)
+    - [6.2 非input 文件输入框](#62-非input-文件输入框)
     - [6.3 事件监听filechooser](#63-事件监听filechooser)
   - [7. 文件下载](#7-文件下载)
     - [7.1 expect_download()](#71-expect_download)
@@ -40,6 +40,12 @@
     - [8.1 dialog事件监听](#81-dialog事件监听)
     - [8.2 dialog属性和方法](#82-dialog属性和方法)
     - [8.3 案例](#83-案例)
+  - [9. 定位多个元素](#9-定位多个元素])
+  - [10. locator.filter()过滤定位器](#10-locator.filter()过滤定位器)
+    - [10.1 has_tex参数](#101-has_tex参数)
+    - [10.2 has参数](#102-has参数)
+    - [10.3 链式定位](#103-链式定位)
+  - [11. 无序列表(listitem)定位](#11-无序列表(listitem)定位)
 
 
 
@@ -849,6 +855,223 @@ with sync_playwright() as p:
                 dialog.accept(prompt_text=text)
 
     page.on("dialog", lambda dialog: handle_dialog(dialog, condition=True, text=str(2)))
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+```
+
+### 9. 定位多个元素
+
+一般定位到页面上唯一的元素再进行操作，有时候一个元素的属性是一样的，会定位到多个元素
+
+```html
+<!--index.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<div>
+    <label>标签：
+        <a id="a1">旅游</a>
+        <a id="a2">看书</a>
+        <a id="a3">学习</a>
+        <a id="a4">学python</a>
+    </label>
+</div>
+</body>
+</html>
+```
+
+```python
+from playwright.sync_api import sync_playwright, Dialog
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+    # 创建标签页
+    page = browser.new_page(no_viewport=True)
+    # 打开指定网站
+    # page.goto("https://www.baidu.com")
+
+    page.goto("E:\\Python Project\\uiautotest_playwright\\index.html")
+	
+    # 获取所有的元素，但是这个时候不是一个可以迭代的对象，需要使用playwrigt的内置方法进行操作
+    elements = page.locator("//a")
+    
+    # 点第一个
+    elements.first.click()
+    
+    # 点最后个
+    elements.last.click()
+    
+    # nth() 根据索引定位
+    elements.nth(0).click()
+    
+    # count 统计个数个数
+    elements.count()
+    
+    # all() 将元素变成可迭代对象，进行批量操作
+    for item in elements.all():
+        print(item.text_content())
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+
+```
+
+### 10. locator.filter()过滤定位器
+
+**支持通过链式的方式不断添加过滤条件**
+
+`locator().filter()` 和 `locator().locator()` 有什么区别？
+
+- `locator().locator()` 是从已经定位到的元素中，继续查询子元素或子孙元素。
+- `locator().filter()` 是从已经定位到的元素中，根据选项缩小现有定位器的范围，可以按文本或定位器过滤。
+
+```html
+<!--index.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<div id="filter">
+    <div class="item">
+        <a href="">python1</a>
+        <a href="">python2</a>
+        <a href="">python3</a>
+    </div>
+    <div class="item">
+        <a href="">playwright</a>
+    </div>
+    <div class="item">
+        <a href="">selenium</a>
+    </div>
+    <div class="item">
+        <a href="">demotest</a>
+    </div>
+</div>
+</body>
+</html>
+```
+
+#### 10.1 has_tex参数
+
+匹配内部某处包含指定文本的元素，可能是在子元素或子元素中。
+
+```python
+# 可以单个过滤
+elements = page.locator('xpath=//div[@class="item"]//a')
+el = elements.filter(has_text="python1")
+print(el.text_content())
+
+# 通过连接的方式多次过滤
+elements = page.locator('xpath=//div[@class="item"]//a')
+el = elements.filter(has_text="p").filter(has_text='ght')
+print(el.text_content())
+```
+
+#### 10.2 has参数
+
+匹配包含与内部定位器匹配的元素的元素。根据外部定位器查询内部定位器。内部定位器是从外部定位器开始匹配的，而不是从文档根目录开始。
+
+```python
+elements = page.locator('xpath=//div[@class="item"]//a')
+el = elements.filter(has=page.get_by_text("python"))
+print(el.text_content())
+```
+
+#### 10.3 链式定位
+
+```python
+el = page.locator("xpath=//div[@class='item']").filter(has_text='py').filter(has_text='on').get_by_text("1")
+print(el)
+print(el.text_content())
+```
+
+
+
+
+
+### 11. 无序列表(listitem)定位
+
+listitem 是无序列表，ul 和 li 标签组合。 **每一个 listitem 相当于 一对`<li></li>`标签**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<div>
+    <ul>
+        <li>
+            <h3>Product 1</h3>
+            <button id="myButton">Add to cart</button>
+        </li>
+        <li>
+            <h3>Product 2</h3>
+            <button>Add to cart</button>
+        </li>
+    </ul>
+</div>
+</body>
+</html>
+
+<script>
+    document.getElementById('myButton').addEventListener('click', function() {
+            console.log('这是一段要打印的话.');
+    });
+</script>
+```
+
+`listitem` 通常和 配合 `locator.filter()` 过滤选择器一起使用
+
+```python
+from playwright.sync_api import sync_playwright, Dialog
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+    # 创建标签页
+    page = browser.new_page(no_viewport=True)
+    # 打开指定网站
+    # page.goto("https://www.baidu.com")
+
+    page.goto("E:\\Python Project\\uiautotest_playwright\\index.html")
+
+    elements = page.get_by_role("listitem").all()
+    for item in elements:
+        if "Product 1" in item.inner_text():
+            item.get_by_role("button").click()
+    
+    # 上面操作等价于下面的操作
+    
+    page.get_by_role("listitem").filter(has_text="Product 1").get_by_role(
+        "button", name="Add to cart"
+    ).click()
 
     page.pause()
     # 关闭浏览器
