@@ -46,6 +46,7 @@
     - [10.2 has参数](#102-has参数)
     - [10.3 链式定位](#103-链式定位)
   - [11. 无序列表(listitem)定位](#11-无序列表(listitem)定位)
+  - [12. scroll滚动](#12-scroll滚动)
 
 
 
@@ -1076,5 +1077,162 @@ with sync_playwright() as p:
     page.pause()
     # 关闭浏览器
     browser.close()
+```
+
+
+
+### 12. scroll滚动
+
+当页面超过屏幕的高度时候，需要滚动到元素出现的位置，让元素处于可视的窗口上才能去操作元素。**playwright 在操作元素的时候，都会自动去让元素出现在可视窗口, 大部分情况不需要我们去操。**
+
+作滚动条
+
+如果我们仅仅是让元素出现到窗口的可视范围，可以使用 `scroll_into_view_if_needed()`方法，它会让元素出现在屏幕的正中间
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as pw:
+    browser = pw.chromium.launch(headless=False, slow_mo=2000)
+    page = browser.new_page()
+    page.goto("https://www.runoob.com/")
+    # 滚动元素到屏幕可视窗口
+    page.get_by_text('【学习 Django】').scroll_into_view_if_needed()
+```
+
+
+
+### 13. 事件的监听与取消
+
+#### 13.1 等待特定事件
+
+**举两个例子：**
+
+一、使用page.expect_request()等待具有指定 url 的请求：
+
+```python
+with page.expect_request("**/*logo*.png") as first:
+	page.goto("https://v3.bootcss.com/")
+print(first.value.url)
+```
+
+二、等待弹出新窗口：
+
+```python
+with page.expect_popup() as popup:
+	page.get_by_text("xxxx").click()
+popup.value.goto("https://v3.bootcss.com/")
+```
+
+
+
+#### 13.2  添加/删除事件
+
+Page对象提供了一个on方法，用于监听页面上发生的各种事件。
+
+具体支持的内置事件请参考官方文档 https://playwright.bootcss.com/docs/api/class-page
+
+添加事件使用 `page.on('event', handle)`
+
+删除事件使用 `page.remove_listener("event", handle_function)`
+
+```python
+def dialog_handle(dialog):
+    dialog.dismiss()
+   
+# 添加监听
+page.on("dialog", dialog_handle)
+
+# 取消监听
+page.remove_listener("dialog", dialog_handle)
+```
+
+**添加一次性事件**
+
+如果某个事件需要处理一次，有一个方便的 API：`page.once()`
+
+```python
+page.once("dialog", lambda dialog: dialog.accept("2021"))
+page.evaluate("prompt('Enter a number:')")
+```
+
+
+
+### 14. checkbox和radio相关操作
+
+```python
+locator.click() #点击操作
+locator.check() #选中
+locator.uncheck() #不选中
+locator.set_checked() #设置选中状态
+locator.is_checked() #判断是否被选中
+```
+
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<div>
+    <label>性别：
+        <input type="radio" name="sex" id="man" checked>男
+        <input type="radio" name="sex" id="woman">女
+    </label>
+</div>
+<div>
+    <label>标签：
+        <input type="checkbox" id="a1"> 旅游
+        <input type="checkbox" id="a2">看书
+        <input type="checkbox" id="a3" checked>学习
+        <input type="checkbox" id="a4">学python
+    </label>
+</div>
+</body>
+</html>
+
+```
+
+#### 14.1 radio单选操作
+
+```python
+status1 = page.locator('#man').is_checked()
+print(status1)
+
+# 选择 女
+page.locator('#woman').click()
+print(page.locator('#woman').is_checked())
+
+# 选择 女
+page.locator('#woman').check()
+print(page.locator('#woman').is_checked())
+
+
+# 选择 女
+page.locator('#woman').set_checked(checked=True)
+print(page.locator('#woman').is_checked())
+
+# 需注意的是，如果男本身就是选择状态，去设置unchecked 状态，会报错: Clicking thecheckbox did not change its state
+```
+
+#### 14.2 checkbox复选框
+
+```python
+# checkbox 操作
+page.locator('#a1').click()
+print(page.locator('#a1').is_checked())
+
+# 如果想让元素必须是选择状态(不管之前有没被选中），可以使用check() 或 set_checked() 方法
+page.locator('#a1').check()
+print(page.locator('#a1').is_checked())
+
+# set_checked() 方法
+page.locator('#a1').set_checked(checked=True)
+print(page.locator('#a1').is_checked())
 ```
 
