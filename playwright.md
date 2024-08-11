@@ -40,13 +40,12 @@
     - [8.1 dialog事件监听](#81-dialog事件监听)
     - [8.2 dialog属性和方法](#82-dialog属性和方法)
     - [8.3 案例](#83-案例)
-  - [9. 定位多个元素](#9-定位多个元素])
-  - [10. locator.filter()过滤定位器](#10-locator.filter()过滤定位器)
+  - [9. 定位多个元素](#9-定位多个元素)
+  - [10. locator.filter()过滤定位器](#10-locatorfilter过滤定位器)
     - [10.1 has_tex参数](#101-has_tex参数)
     - [10.2 has参数](#102-has参数)
     - [10.3 链式定位](#103-链式定位)
   - [11. 无序列表(listitem)定位](#11-无序列表(listitem)定位)
-  - [12. scroll滚动](#12-scroll滚动)
 
 
 
