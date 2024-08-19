@@ -6,6 +6,8 @@
   - [2. 设置窗口的指定大小](#2-设置窗口的指定大小)
   - [3. 启动本地浏览器](#3-启动本地浏览器)
   - [4. 在打开的浏览器上继续操作](#4-在打开的浏览器上继续操作)
+  - [5. new_context上下文](#5-new_context上下文)
+  - [6. page.goto(url)生命周期](#6-pagegotourl生命周期)
 - [三、元素定位](#三元素定位)
   - [1. CSS 或 XPath 选择器](#1-css-或-xpath-选择器)
   - [2. 文本选择器](#2-文本选择器)
@@ -53,6 +55,7 @@
   - [14. checkbox和radio相关操作](#14-checkbox和radio相关操作)
     - [14.1 radio单选操作](#141-radio单选操作)
     - [14.2 checkbox复选框](#142-checkbox复选框) 
+  - [15. 切换标签页](#15-切换标签页)
 
 
 
@@ -208,6 +211,47 @@ with sync_playwright() as p:
     # 获取page对象
     page = browser.contexts[0].pages[0]
 ```
+
+### 5. new_context上下文
+
+`browser.new_context()` 创建一个新的浏览器上下文。**它不会与其他浏览器上下文共享 cookies/缓存**。
+
+如需要不同用户登录同一个网页，不需要创建多个浏览器实例，只需要创建多个context即可。
+
+```python
+from playwright.sync_api import sync_playwright, Dialog
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+
+    # 第一个上下文
+    context_first = browser.new_context(no_viewport=True)
+    # 第二个上下文
+    context_second = browser.new_context(no_viewport=True)
+    
+    # 操作第一个浏览器窗口
+    page1 = context_first.new_page()
+    page1.goto("https://www.baidu.com")
+
+    # 操作第二个浏览器窗口
+    page2 = context_second.new_page()
+    page2.goto("https://www.baidu.com")
+
+    page1.pause()
+    page2.pause()
+    # 关闭浏览器
+    browser.close()
+```
+
+### 6. page.goto(url)生命周期
+
+
+
+
 
 ## 三、元素定位
 
@@ -1240,5 +1284,43 @@ print(page.locator('#a1').is_checked())
 # set_checked() 方法
 page.locator('#a1').set_checked(checked=True)
 print(page.locator('#a1').is_checked())
+```
+
+
+
+ ### 15. 切换标签页
+
+- `context.pages` 获取所有标签页
+
+- `bring_to_front()` 激活指定标签页
+
+```python
+from playwright.sync_api import sync_playwright, Dialog
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+    context = browser.new_context(no_viewport=True)
+    # 创建标签页
+    page = context.new_page()
+    # 打开指定网站
+    page.goto("https://www.baidu.com")
+
+    # 点开多个标签页
+    for link in page.locator('#s-top-left>a').all():
+        link.click()
+
+    for page_item in context.pages:
+        if page_item.title() == "地图":
+            # 激活当前选项卡
+            page_item.bring_to_front()
+           
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+
 ```
 
