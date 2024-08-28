@@ -8,6 +8,9 @@
   - [4. 在打开的浏览器上继续操作](#4-在打开的浏览器上继续操作)
   - [5. new_context上下文](#5-new_context上下文)
   - [6. page.goto(url)生命周期](#6-pagegotourl生命周期)
+    - [6.1 事件状态](#61-事件状态)
+    - [6.2 案例](#62-案例)
+    - [6.3 timeout等待超时](#63-timeout等待超时)
 - [三、元素定位](#三元素定位)
   - [1. CSS 或 XPath 选择器](#1-css-或-xpath-选择器)
   - [2. 文本选择器](#2-文本选择器)
@@ -56,6 +59,9 @@
     - [14.1 radio单选操作](#141-radio单选操作)
     - [14.2 checkbox复选框](#142-checkbox复选框) 
   - [15. 切换标签页](#15-切换标签页)
+  - [16. 处理新标签窗口](#16-处理新标签窗口)
+    - [16.1 context.expect_page()](#161-context.expect_page)
+    - [16.2 page.expect_popup()](#162-page.expect_popup)
 
 
 
@@ -249,7 +255,81 @@ with sync_playwright() as p:
 
 ### 6. page.goto(url)生命周期
 
+调用 page.goto(url) 后页面加载过程：
 
+- page.url 设定新的 url
+- document 文档内容通过网络加载并解析
+-  page.on("domcontentloaded") 事件触发
+- 执行页面的 js 脚本，页面执行一些脚本并加载 css 和图像等资源
+- page.on("load") 事件触发
+- 页面执行动态加载的脚本
+-  `networkidle`当 500 毫秒内没有新的网络请求时触发
+
+#### 6.1 事件状态
+
+从源码可以看到 wait_until 等待的事件可以支持["commit", "domcontentloaded", "load", "networkidle"] 四个参数，默认是等待 load 触发。
+
+```python
+ def goto(
+        self,
+        url: str,
+        *,
+        timeout: typing.Optional[float] = None,
+        wait_until: typing.Optional[
+            Literal["commit", "domcontentloaded", "load", "networkidle"]
+        ] = None,
+        referer: typing.Optional[str] = None
+    ) -> typing.Optional["Response"]:
+```
+
+#### 6.2 案例
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False, slow_mo=1000)
+    context = browser.new_context(accept_downloads=True)
+    page = context.new_page()
+    page.goto("https://playwright.dev/")
+    page.get_by_role("link", name="Community").click()
+    page.pause()
+    browser.close()
+    
+
+# 如果是按默认的等待 load 事件，会出现报错, 因为国内加载外部网站时速度很慢,静态资源30s内无法正常加载完成
+    
+result = next(iter(done)).result()
+playwright._impl._api_types.TimeoutError: Timeout 30000ms exceeded.
+=========================== logs ===========================
+navigating to "https://playwright.dev/", waiting until "load"
+============================================================
+
+
+# 其实页面元素在 domcontentloaded 阶段就已经加载到元素了，那么不用等待到load
+
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False, slow_mo=1000)
+    context = browser.new_context(accept_downloads=True)
+    page = context.new_page()
+    page.goto("https://playwright.dev/", wait_until="domcontentloaded")
+    page.get_by_role("link", name="Community").click()
+    page.pause()
+    browser.close()
+```
+
+#### 6.3 timeout等待超时
+
+timeout 参数可以设置页面加载超时时间, 默认是30秒， 传递“0”以禁用超时。
+
+更改默认值可以使用 以下方法更改
+
+- `browser_context.set_fault_navigation_timeout() `
+- `browser_context.set_fault_timeout()`
+- ` page.set_fault_navigation_timeout()`
+- `page.set_fault_timeout()`
 
 
 
@@ -1322,5 +1402,69 @@ with sync_playwright() as p:
     # 关闭浏览器
     browser.close()
 
+```
+
+
+
+### 16. 处理新标签窗口
+
+这个和 目录15 中切换标签的区别就是，切换标签后你只能在指定的一个页面上进行操作，通过下面的两个方法你可以随意的在多个页面中自由操作
+
+#### 16.1 context.expect_page()
+
+```python
+from playwright.sync_api import sync_playwright
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+
+    context = browser.new_context(no_viewport=True)
+
+    # 操作第一个浏览器窗口
+    page = context.new_page()
+    page.goto("https://www.baidu.com")
+
+    with context.expect_page() as new_page:
+        page.click('text=新闻')
+
+    page2 = new_page.value
+    print(page2.title())
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
+```
+
+#### 16.2 page.expect_popup()
+
+```python
+from playwright.sync_api import sync_playwright
+
+browser_args = list()
+browser_args.append("--start-maximized")
+
+with sync_playwright() as p:
+    # 启动浏览器
+    browser = p.chromium.launch(headless=False, args=browser_args, slow_mo=500)
+
+    context = browser.new_context(no_viewport=True)
+
+    # 操作第一个浏览器窗口
+    page = context.new_page()
+    page.goto("https://www.baidu.com")
+
+    with page.expect_popup() as new_page:
+        page.click('text=新闻')
+
+    page2 = new_page.value
+    print(page2.title())
+
+    page.pause()
+    # 关闭浏览器
+    browser.close()
 ```
 
