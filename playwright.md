@@ -62,6 +62,12 @@
   - [16. 处理新标签窗口](#16-处理新标签窗口)
     - [16.1 context.expect_page()](#161-context.expect_page)
     - [16.2 page.expect_popup()](#162-page.expect_popup)
+- [五、高级功能](#五高级功能)
+  - [1. wait_for_load_state](#1-wait_for_load_state)
+  - [2. page.expect_navigation](#2-page.expect_navigation)
+  - [3. 录制视频](#3-录制视频)
+  - [4. Trace Viewer](#4-Trace-Viewer)
+
 
 
 
@@ -496,7 +502,7 @@ href_element.click()
 
 
 
-## 四、元素操作
+## 五、高级用法四、元素操作
 
 元素操作有两种方法
 
@@ -1466,5 +1472,102 @@ with sync_playwright() as p:
     page.pause()
     # 关闭浏览器
     browser.close()
+```
+
+
+
+## 五、高级功能
+
+
+
+#### 1. wait_for_load_state
+
+从A页面点击打开B页面，存在2种情况
+
+​	1.带有 target="_blank" 的链接时，会打开一个新的标签页
+
+​	2.直接在当前页面刷新另外一个地址
+
+当打开一个新的页面后，可以使用 wait_for_load_state 等待页面加载到指定状态 ，等待的事件可以支持 `["commit", "domcontentloaded", "load", "networkidle"]` 四个参数
+
+```python
+page.locator("button").click() # Click triggers navigation
+page.wait_for_load_state("networkidle") # This waits for the "networkidle
+```
+
+
+
+#### 2. page.expect_navigation
+
+显式调用page.expect_navigation() 等待新的页面加载, 如果没有等待到新的导航页面，就会报超时异常
+
+```python
+with page.expect_navigation():
+	# Triggers a navigation after a timeout
+	page.get_by_text("Navigate after timeout").click()
+```
+
+点击一个元素可能会触发多个导航。在这些情况下，建议将 page.expect_navigation() 显式指向特定的 url。
+
+```python
+# Using Python context manager prevents a race condition
+# between clicking and waiting for a navigation.
+with page.expect_navigation(url="**/login"):
+# Triggers a navigation with a script redirect
+	page.get_by_text("Click me").click()
+```
+
+
+
+#### 3. 录制视频
+
+视频在浏览器上下文关闭时保存。如果您手动创建浏览器上下文，请确保 `browser_context.close()`, 会在调用close的时候保存视频
+
+```python
+context = browser.new_context(record_video_dir="videos/")
+# 确保调用 close, videos视频才会保存
+context.close()
+```
+
+**指定视频宽高：**
+
+视频大小默认为缩小以适合 800x800 的视口大小。
+
+```python
+context = browser.new_context(
+	record_video_dir="videos/",
+	record_video_size={"width": 640, "height": 480}
+)
+```
+
+**获取视频路径：**
+
+```python
+path = page.video.path()
+print(path) # videos\b880519a32528f80d64a2cb6769f2162.webm
+```
+
+
+
+#### 4. Trace Viewer
+
+在执行自动化用例的过程中，出现一些不稳定偶然性的bug，需要复现bug, 还原bug出现的过程。于是需要追踪用例执行的过程。
+
+Playwright Trace Viewer 是一个 GUI 工具，可让您探索记录的 Playwright 测试跟踪，这意味着
+
+您可以在测试的每个操作中前后移动，并直观地查看每个操作期间发生的情况。
+
+```python
+browser = chromium.launch()
+context = browser.new_context()
+
+# Start tracing before creating / navigating a page. 在加载完上下文之后，开启Trace功能
+context.tracing.start(screenshots=True, snapshots=True, sources=True)
+page = context.new_page()
+
+page.goto("https://playwright.dev")
+
+# Stop tracing and export it into a zip archive.
+context.tracing.stop(path = "trace.zip")
 ```
 
