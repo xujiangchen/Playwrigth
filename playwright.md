@@ -67,6 +67,8 @@
   - [2. page.expect_navigation](#2-page.expect_navigation)
   - [3. 录制视频](#3-录制视频)
   - [4. Trace Viewer](#4-Trace-Viewer)
+  - [5. 保存Cookie](#5-保存Cookie)
+  - [6. Mock](6-Mock)
 
 
 
@@ -1569,5 +1571,102 @@ page.goto("https://playwright.dev")
 
 # Stop tracing and export it into a zip archive.
 context.tracing.stop(path = "trace.zip")
+```
+
+
+
+#### 5. 保存Cookie
+
+Playwright 提供`browserContext.storageState([options])`方法，可用于从经过身份验证的上下文中检索存储状态，然后创建具有预填充状态的新上下文。
+
+Cookie 和本地存储状态可以跨不同的浏览器使用。它们取决于您的应用程序的身份验证模型：某些应用程序可能需要 cookie 和本地存储。
+
+```python
+storage = context.storage_state(path="auth/state.json")
+```
+
+于是在本地会保存一个state.json文件
+
+这样在其它地方就可以使用本地的cookies，实现免登录了
+
+```python
+# Create a new context with the saved storage state.
+context = browser.new_context(storage_state="state.json")
+```
+
+
+
+#### 6. Mock
+
+web 自动化主要测前端UI 的功能，有很多异常的场景，我们很难造真实的场景去触发，比如服务器异常时候，前端的提示语。
+
+这时候就可以使用mock 功能，模拟接口的返回，测试前端的功能。
+
+
+
+Web API 通常作为 HTTP 端点实现。Playwright 提供 API 来模拟和修改网络流量，包括 HTTP和 HTTPS。页面执行的任何请求，包括XHR和获取请求，都可以被跟踪、修改和模拟。
+
+**场景一：**
+
+以下代码将拦截对的所有调用https://dog.ceo/api/breeds/list/all 并将返回测试数据。不会向https://dog.ceo/api/breeds/list/all端点发出任何请求。
+
+```python
+async def handle(route):
+	json = { message: { "test_breed": [] } }
+	route.fulfill(json=json)
+    
+page.route("https://dog.ceo/api/breeds/list/all", handle)
+```
+
+
+
+**场景二：**
+
+有时，必须发出 API 请求，但需要修补响应以允许可重现的测试。在这种情况下，可以执行请求并使用修改后的响应来完成请求，而不是模拟请求。
+
+```python
+def handle(route):
+    response = route.fulfill()
+    json = response.json()
+    json["message"]["big_red_dog"] = []
+    # Fulfill using the original response, while patching the response body
+    # with the given JSON object.
+    route.fulfill(response=response, json=json)
+    
+    
+page.route("https://dog.ceo/api/breeds/list/all", handle)
+```
+
+
+
+**Demo：**
+
+```python
+from playwright.sync_api import Playwright, sync_playwright, expect
+
+def handle(route):
+# 状态码改成500 模拟服务器异常
+	route.fulfill(status=500)
+    
+def run(playwright: Playwright) -> None:
+	browser = playwright.chromium.launch(headless=False)
+	context = browser.new_context()
+	page = context.new_page()
+	page.goto("http://127.0.0.0:8000/login.html")
+    page.get_by_placeholder("请输入用户名").click()
+    page.get_by_placeholder("请输入用户名").fill("playwright")
+    page.get_by_placeholder("请输入密码").click()
+    page.get_by_placeholder("请输入密码").fill("123456")
+    page.route("http://127.0.0.0/api/login", handle)
+    
+	page.get_by_role("button", name="立即登录 >").click()
+	page.pause() # 断点
+	# ---------------------
+	context.close()
+	browser.close()
+    
+    
+with sync_playwright() as playwright:
+	run(playwright)
 ```
 
